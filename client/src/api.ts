@@ -1,7 +1,11 @@
 import type { ChallengeView, CreateChallengeResponse, HitRegion, PlayResultResponse } from './types';
 
+// Empty by default: local dev proxies /api to the backend (see vite.config.ts).
+// In production, set VITE_API_BASE_URL to the deployed backend's origin.
+const API_BASE = import.meta.env.VITE_API_BASE_URL ?? '';
+
 async function request<T>(path: string, options?: RequestInit): Promise<T> {
-  const res = await fetch(`/api${path}`, {
+  const res = await fetch(`${API_BASE}/api${path}`, {
     headers: { 'Content-Type': 'application/json' },
     ...options,
   });
