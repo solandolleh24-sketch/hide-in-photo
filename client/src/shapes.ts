@@ -1,71 +1,82 @@
-export type ShapeId = 'blob' | 'star' | 'heart' | 'diamond' | 'cat';
+export type ShapeId = 'standing' | 'waving' | 'cheering' | 'kneeling' | 'reaching';
 
 export const SHAPES: { id: ShapeId; label: string }[] = [
-  { id: 'blob', label: '블롭' },
-  { id: 'cat', label: '고양이' },
-  { id: 'star', label: '별' },
-  { id: 'heart', label: '하트' },
-  { id: 'diamond', label: '다이아' },
+  { id: 'standing', label: '서있기' },
+  { id: 'waving', label: '손흔들기' },
+  { id: 'cheering', label: '만세' },
+  { id: 'kneeling', label: '앉기' },
+  { id: 'reaching', label: '뻗기' },
 ];
 
-/** Draws a closed silhouette path centered in a `size` x `size` box. Caller fills/clips it. */
-export function traceShapePath(ctx: CanvasRenderingContext2D, shape: ShapeId, size: number) {
-  const c = size / 2;
-  ctx.beginPath();
-  switch (shape) {
-    case 'blob': {
-      ctx.arc(c, c, size * 0.42, 0, Math.PI * 2);
-      break;
-    }
-    case 'star': {
-      const spikes = 5;
-      const outer = size * 0.46;
-      const inner = size * 0.19;
-      let rot = (Math.PI / 2) * 3;
-      const step = Math.PI / spikes;
-      ctx.moveTo(c, c - outer);
-      for (let i = 0; i < spikes; i++) {
-        ctx.lineTo(c + Math.cos(rot) * outer, c + Math.sin(rot) * outer);
-        rot += step;
-        ctx.lineTo(c + Math.cos(rot) * inner, c + Math.sin(rot) * inner);
-        rot += step;
-      }
-      ctx.closePath();
-      break;
-    }
-    case 'heart': {
-      const s = size * 0.032;
-      ctx.moveTo(c, c + 12 * s);
-      ctx.bezierCurveTo(c - 15 * s, c - 4 * s, c - 13 * s, c - 14 * s, c, c - 6 * s);
-      ctx.bezierCurveTo(c + 13 * s, c - 14 * s, c + 15 * s, c - 4 * s, c, c + 12 * s);
-      break;
-    }
-    case 'diamond': {
-      const r = size * 0.44;
-      ctx.moveTo(c, c - r);
-      ctx.lineTo(c + r * 0.75, c);
-      ctx.lineTo(c, c + r);
-      ctx.lineTo(c - r * 0.75, c);
-      ctx.closePath();
-      break;
-    }
-    case 'cat': {
-      const r = size * 0.32;
-      ctx.arc(c, c + size * 0.06, r, 0, Math.PI * 2);
-      ctx.moveTo(c - r * 0.8, c - size * 0.16);
-      ctx.lineTo(c - r * 1.35, c - size * 0.42);
-      ctx.lineTo(c - r * 0.15, c - size * 0.2);
-      ctx.closePath();
-      ctx.moveTo(c + r * 0.8, c - size * 0.16);
-      ctx.lineTo(c + r * 1.35, c - size * 0.42);
-      ctx.lineTo(c + r * 0.15, c - size * 0.2);
-      ctx.closePath();
-      break;
-    }
-  }
+interface Pose {
+  leftArmDeg: number;
+  rightArmDeg: number;
+  leftLegDeg: number;
+  rightLegDeg: number;
+  legLengthScale?: number;
 }
 
-export function renderShapeIcon(shape: ShapeId, size = 64, color = '#9ca3af'): string {
+// Rotation convention (angleDeg=0 points straight down from the pivot):
+// positive angles swing toward the left (0=down -> 90=left -> 180=up),
+// negative angles swing toward the right (0=down -> -90=right -> -180=up).
+// So a left-side limb swings outward with a positive angle, a right-side
+// limb swings outward with a negative angle.
+const POSES: Record<ShapeId, Pose> = {
+  standing: { leftArmDeg: 12, rightArmDeg: -12, leftLegDeg: 6, rightLegDeg: -6 },
+  waving: { leftArmDeg: 12, rightArmDeg: -150, leftLegDeg: 6, rightLegDeg: -6 },
+  cheering: { leftArmDeg: 170, rightArmDeg: -170, leftLegDeg: 6, rightLegDeg: -6 },
+  kneeling: { leftArmDeg: 20, rightArmDeg: -20, leftLegDeg: 105, rightLegDeg: -105, legLengthScale: 0.65 },
+  reaching: { leftArmDeg: 95, rightArmDeg: -25, leftLegDeg: 25, rightLegDeg: -25 },
+};
+
+/** Adds a rounded capsule/pill to the current path, pivoted at (px, py) and pointing "down" at angleDeg 0. */
+function addLimb(ctx: CanvasRenderingContext2D, px: number, py: number, length: number, width: number, angleDeg: number) {
+  ctx.save();
+  ctx.translate(px, py);
+  ctx.rotate((angleDeg * Math.PI) / 180);
+  const r = width / 2;
+  ctx.roundRect(-r, 0, width, length, r);
+  ctx.restore();
+}
+
+/**
+ * Draws a minimalist white-clay mascot silhouette: round featureless head,
+ * chunky rounded torso, thick stubby limbs in a given pose. Chibi-ish
+ * proportions (big head, short chunky limbs) to read as a soft sculpted
+ * clay figurine. Centered in a `size` x `size` box. Caller fills it as one
+ * path.
+ */
+export function traceShapePath(ctx: CanvasRenderingContext2D, shape: ShapeId, size: number) {
+  const c = size / 2;
+  const pose = POSES[shape];
+
+  ctx.beginPath();
+
+  // Legs (drawn first so the torso's rounded edge overlaps their tops)
+  const hipY = size * 0.58;
+  const legLength = size * 0.24 * (pose.legLengthScale ?? 1);
+  const legWidth = size * 0.17;
+  addLimb(ctx, c - size * 0.11, hipY, legLength, legWidth, pose.leftLegDeg);
+  addLimb(ctx, c + size * 0.11, hipY, legLength, legWidth, pose.rightLegDeg);
+
+  // Arms - short and chunky
+  const shoulderY = size * 0.36;
+  const armLength = size * 0.22;
+  const armWidth = size * 0.15;
+  addLimb(ctx, c - size * 0.16, shoulderY, armLength, armWidth, pose.leftArmDeg);
+  addLimb(ctx, c + size * 0.16, shoulderY, armLength, armWidth, pose.rightArmDeg);
+
+  // Torso - squat and highly rounded
+  const torsoW = size * 0.36;
+  const torsoH = size * 0.28;
+  ctx.roundRect(c - torsoW / 2, size * 0.32, torsoW, torsoH, size * 0.16);
+
+  // Head (large, round, featureless)
+  ctx.moveTo(c + size * 0.2, size * 0.21);
+  ctx.arc(c, size * 0.21, size * 0.2, 0, Math.PI * 2);
+}
+
+export function renderShapeIcon(shape: ShapeId, size = 64, color = '#f5f4f1'): string {
   const canvas = document.createElement('canvas');
   canvas.width = size;
   canvas.height = size;
@@ -73,5 +84,8 @@ export function renderShapeIcon(shape: ShapeId, size = 64, color = '#9ca3af'): s
   traceShapePath(ctx, shape, size);
   ctx.fillStyle = color;
   ctx.fill();
+  ctx.lineWidth = Math.max(1, size * 0.02);
+  ctx.strokeStyle = '#d8d5cf';
+  ctx.stroke();
   return canvas.toDataURL();
 }

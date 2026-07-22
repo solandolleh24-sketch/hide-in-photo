@@ -4,7 +4,7 @@ import type { HitRegion } from './types';
 export type EditorMode = 'move' | 'paint' | 'erase' | 'eyedrop';
 
 const MASK_SIZE = 220;
-const DEFAULT_FILL = '#b0b0b0';
+const DEFAULT_FILL = '#f0eee8';
 const HISTORY_LIMIT = 15;
 
 interface CharacterInstance {
@@ -25,7 +25,12 @@ function makePaintCanvas(shape: ShapeId): HTMLCanvasElement {
   c.height = MASK_SIZE;
   const ctx = c.getContext('2d')!;
   traceShapePath(ctx, shape, MASK_SIZE);
-  ctx.fillStyle = DEFAULT_FILL;
+  // Soft clay-like shading: subtle highlight near the top, gentle shadow toward the base.
+  const gradient = ctx.createLinearGradient(0, 0, 0, MASK_SIZE);
+  gradient.addColorStop(0, '#fbfaf8');
+  gradient.addColorStop(0.55, DEFAULT_FILL);
+  gradient.addColorStop(1, '#e2ded5');
+  ctx.fillStyle = gradient;
   ctx.fill();
   return c;
 }
