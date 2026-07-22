@@ -4,7 +4,7 @@ import type { HitRegion } from './types';
 export type EditorMode = 'move' | 'paint' | 'erase' | 'eyedrop';
 
 const MASK_SIZE = 220;
-const DEFAULT_FILL = '#f0eee8';
+const DEFAULT_FILL = '#f5f4f1';
 const HISTORY_LIMIT = 15;
 
 interface CharacterInstance {
@@ -25,11 +25,19 @@ function makePaintCanvas(shape: ShapeId): HTMLCanvasElement {
   c.height = MASK_SIZE;
   const ctx = c.getContext('2d')!;
   traceShapePath(ctx, shape, MASK_SIZE);
-  // Soft clay-like shading: subtle highlight near the top, gentle shadow toward the base.
-  const gradient = ctx.createLinearGradient(0, 0, 0, MASK_SIZE);
-  gradient.addColorStop(0, '#fbfaf8');
+  // Matte clay shading: a single soft light source near the head reads as
+  // sculpted volume without any texture or facial detail.
+  const gradient = ctx.createRadialGradient(
+    MASK_SIZE * 0.38,
+    MASK_SIZE * 0.2,
+    MASK_SIZE * 0.04,
+    MASK_SIZE * 0.5,
+    MASK_SIZE * 0.55,
+    MASK_SIZE * 0.62
+  );
+  gradient.addColorStop(0, '#ffffff');
   gradient.addColorStop(0.55, DEFAULT_FILL);
-  gradient.addColorStop(1, '#e2ded5');
+  gradient.addColorStop(1, '#dedad2');
   ctx.fillStyle = gradient;
   ctx.fill();
   return c;
@@ -316,6 +324,15 @@ export class CanvasEditor {
     ctx.drawImage(this.background, 0, 0, this.width, this.height);
 
     for (const c of this.characters) {
+      // Soft grounding shadow beneath the figure, sells the sculpted-toy volume.
+      ctx.save();
+      ctx.filter = 'blur(4px)';
+      ctx.fillStyle = 'rgba(15,15,15,0.22)';
+      ctx.beginPath();
+      ctx.ellipse(c.x, c.y + (MASK_SIZE / 2) * c.scale * 0.86, MASK_SIZE * 0.24 * c.scale, MASK_SIZE * 0.08 * c.scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
       ctx.save();
       ctx.translate(c.x, c.y);
       ctx.rotate(c.rotation);
