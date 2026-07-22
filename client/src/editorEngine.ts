@@ -1,4 +1,4 @@
-import { traceShapePath, type ShapeId } from './shapes';
+import { rasterizeMascot, type ShapeId } from './shapes';
 import type { HitRegion } from './types';
 
 export type EditorMode = 'move' | 'paint' | 'erase' | 'eyedrop';
@@ -24,22 +24,7 @@ function makePaintCanvas(shape: ShapeId): HTMLCanvasElement {
   c.width = MASK_SIZE;
   c.height = MASK_SIZE;
   const ctx = c.getContext('2d')!;
-  traceShapePath(ctx, shape, MASK_SIZE);
-  // Matte clay shading: a single soft light source near the head reads as
-  // sculpted volume without any texture or facial detail.
-  const gradient = ctx.createRadialGradient(
-    MASK_SIZE * 0.38,
-    MASK_SIZE * 0.2,
-    MASK_SIZE * 0.04,
-    MASK_SIZE * 0.5,
-    MASK_SIZE * 0.55,
-    MASK_SIZE * 0.62
-  );
-  gradient.addColorStop(0, '#ffffff');
-  gradient.addColorStop(0.55, DEFAULT_FILL);
-  gradient.addColorStop(1, '#dedad2');
-  ctx.fillStyle = gradient;
-  ctx.fill();
+  rasterizeMascot(ctx, shape, MASK_SIZE);
   return c;
 }
 
