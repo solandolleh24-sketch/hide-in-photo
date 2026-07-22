@@ -1,10 +1,10 @@
-import { traceShapePath, type ShapeId } from './shapes';
+import { rasterizeMascot, type ShapeId } from './shapes';
 import type { HitRegion } from './types';
 
 export type EditorMode = 'move' | 'paint' | 'erase' | 'eyedrop';
 
 const MASK_SIZE = 220;
-const DEFAULT_FILL = '#b0b0b0';
+const DEFAULT_FILL = '#f5f4f1';
 const HISTORY_LIMIT = 15;
 
 interface CharacterInstance {
@@ -24,9 +24,7 @@ function makePaintCanvas(shape: ShapeId): HTMLCanvasElement {
   c.width = MASK_SIZE;
   c.height = MASK_SIZE;
   const ctx = c.getContext('2d')!;
-  traceShapePath(ctx, shape, MASK_SIZE);
-  ctx.fillStyle = DEFAULT_FILL;
-  ctx.fill();
+  rasterizeMascot(ctx, shape, MASK_SIZE);
   return c;
 }
 
@@ -311,6 +309,15 @@ export class CanvasEditor {
     ctx.drawImage(this.background, 0, 0, this.width, this.height);
 
     for (const c of this.characters) {
+      // Soft grounding shadow beneath the figure, sells the sculpted-toy volume.
+      ctx.save();
+      ctx.filter = 'blur(4px)';
+      ctx.fillStyle = 'rgba(15,15,15,0.22)';
+      ctx.beginPath();
+      ctx.ellipse(c.x, c.y + (MASK_SIZE / 2) * c.scale * 0.86, MASK_SIZE * 0.24 * c.scale, MASK_SIZE * 0.08 * c.scale, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+
       ctx.save();
       ctx.translate(c.x, c.y);
       ctx.rotate(c.rotation);
